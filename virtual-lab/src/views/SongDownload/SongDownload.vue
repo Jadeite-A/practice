@@ -1,0 +1,254 @@
+<template>
+  <div class="download-container">
+    <div class="inputArea">
+      <el-tabs type="border-card">
+        <el-tab-pane label="输入">
+          <div class="inputGround">
+            <div class="">
+              Input Name:
+              <el-autocomplete v-model="songName" :fetch-suggestions="nameSearch" class="" value-key="name"
+                @select="handleSelect" />
+            </div>
+            <div class="">
+              Input Author:
+              <el-autocomplete v-model="songAuthor" :fetch-suggestions="authorSearch" class="" value-key="author"
+                @select="handleSelect" />
+            </div>
+            <el-button type="primary" :disabled="!songName" @click="commitInput(false)">Download</el-button>
+          </div>
+        </el-tab-pane>
+        <el-tab-pane label="批量">
+          <el-button type="primary" @click="test">Upload</el-button>
+        </el-tab-pane>
+      </el-tabs>
+    </div>
+    <div class="showRecord">
+      <el-scrollbar height="560px" tag="div">
+        <TransitionGroup name="record" tag="div">
+          <div v-for="recordItem in songStore.showRecordList" :key="recordItem.id" class="recordItem"
+            :class="[{ danger: recordItem.status }]">
+            <!-- <div > -->
+            <span>{{ recordItem.id }}.</span>
+            <span class="">{{ recordItem.name }}</span>
+            <span>{{ recordItem.author }}</span>
+            <span>{{ recordItem.time }}</span>
+            <!-- </div> -->
+          </div>
+        </TransitionGroup>
+      </el-scrollbar>
+    </div>
+    <div class="statisticsArea">
+      <h3 class="title">statistics:</h3>
+      <div class="content">
+        <div>
+          <el-icon color="#f00" size="20">
+            <WarningFilled />
+          </el-icon>
+          <span>{{ songStore.statisticsList('failure').length }}</span>
+        </div>
+        <div>
+          <el-icon color="green" size="20">
+            <SuccessFilled />
+          </el-icon>
+          <span>{{ songStore.statisticsList('success').length }}</span>
+        </div>
+        <div>共计:
+          <span>{{ songStore.recordNum }}</span>
+        </div>
+      </div>
+    </div>
+    <el-dialog v-model="dialogVisible" title="Tips" width="30%">
+      <span>This is a message</span>
+      <template #footer>
+        <span class="dialog-footer">
+          <el-button @click="dialogVisible = false">Cancel</el-button>
+          <el-button type="primary" @click="commitInput(true)">
+            Confirm
+          </el-button>
+        </span>
+      </template>
+    </el-dialog>
+  </div>
+</template>
+<script lang="ts">
+export default {
+  name: 'SongDownload'
+};
+</script>
+  
+<script setup lang = "ts" >
+// import { defineComponent } from 'vue';
+import axios from 'axios';
+import { ref, toRaw, reactive, computed, watch, nextTick, onMounted } from 'vue';
+import { useSongStore } from '@/store/songStore'; // @ is an alias to /src
+interface songItem {
+  name: string,
+  status: 'success' | 'failure',
+  author: string | null,
+  url: string | null,
+  time: string
+}
+const songStore = useSongStore();
+const songName = ref('');
+const songAuthor = ref('');
+const dialogVisible = ref(false);
+
+// const inputHistoryList = computed(() => songStore.recordNum > 5 ? songStore.showRecordList.slice(0, 5) : songStore.showRecordList);
+const inputNameHistoryList = computed(() => {
+  let result = [...new Set(songStore.showRecordList.map((item) => item.name))];
+  return (result.length > 5 ? result.slice(0, 5) : result).map((name) => { return { name } });
+})
+const inputAuthorHistoryList = computed(() => {
+  let result = [...new Set(songStore.showRecordList.filter((item) => item.author !== null).map((item) => item.author))];
+  return (result.length > 5 ? result.slice(0, 5) : result).map((author) => { return { author } });
+})
+const nameSearch = (songName: string, cb: (arg: any) => void) => {
+  const matchResults = songName ? inputNameHistoryList.value.filter((item) => item.name.toLowerCase().indexOf(songName.toLowerCase()) !== -1) : inputNameHistoryList.value;
+  cb(matchResults);
+}
+const authorSearch = (songAuthor: string, cb: (arg: any) => void) => {
+  const matchResults = songAuthor ? inputAuthorHistoryList.value.filter((item) => (item.author as string).toLowerCase().indexOf(songAuthor.toLowerCase()) !== -1) : inputAuthorHistoryList.value;
+  cb(matchResults);
+}
+const handleSelect = (value: string) => {
+  console.log(value);
+
+}
+
+const commitInput = (force = false) => {
+  if (!force) {
+    dialogVisible.value = !songAuthor.value;
+    if (dialogVisible.value) {
+      return;
+    }
+  }
+  dialogVisible.value = false;
+
+  const date = new Date();
+  const time = `${date.getFullYear()}-${date.getMonth()}-${date.getDate()}  ${date.getHours()}:${date.getMinutes()}:${date.getSeconds()}`;
+  const songInfo: songItem = {
+    name: songName.value,
+    status: 'failure',
+    author: songAuthor.value || null,
+    url: null,
+    time
+  }
+  songStore.addSong(songInfo);
+  songName.value = '';
+  songAuthor.value = '';
+}
+
+
+const test = () => {
+  console.log(666);
+  axios.post('http://192.168.0.108:9588/api/download', { name: '小苹果', author: '筷子兄弟' }).then((body: unknown) => {
+    console.log(body);
+  })
+
+};
+</script>
+<style scoped lang="scss">
+.download-container {
+  padding: 0 20px;
+
+  .inputArea {
+    .inputGround {
+      display: flex;
+
+      color: #242424;
+      font-weight: 600;
+
+      &>div {
+        margin-right: 30px;
+      }
+    }
+  }
+
+  .showRecord {
+    margin: 10px 0;
+    padding: 10px 0;
+
+    background-color: antiquewhite;
+    color: #242424;
+    text-align: left;
+
+    // &>div {
+    //   max-height: 560px;
+    //   overflow: auto;
+    // }
+
+    .record-enter-active,
+    .record-leave-active {
+      transition: all 0.5s ease;
+    }
+
+    .record-enter-from,
+    .record-leave-to {
+      opacity: 0;
+      transform: translateX(30px);
+    }
+
+    .recordItem {
+      margin-top: 5px;
+      padding: 2px 20px;
+
+      font-size: 16px;
+      line-height: 18px;
+      font-weight: 500;
+
+      &:first-child {
+        margin-top: 0;
+      }
+
+      &>span {
+        margin-right: 9px;
+
+        &:last-child {
+          margin: 0;
+        }
+
+        &:nth-child(2) {
+          font-weight: 600;
+        }
+
+        &:nth-child(3) {
+          font-style: italic;
+          font-size: 12px;
+          opacity: 0.8;
+        }
+      }
+    }
+
+    .danger {
+      color: #f00;
+    }
+  }
+
+  .statisticsArea {
+    text-align: left;
+
+    .title {
+      margin: 20px 0 10px;
+    }
+
+    .content {
+      padding: 0 10px;
+
+      &>div {
+        display: flex;
+        // align-items: center;
+        align-content: center;
+
+        margin-bottom: 5px;
+
+        font-size: 18px;
+        line-height: 20px;
+
+        &>span {
+          margin-left: 12px;
+        }
+      }
+    }
+  }
+}
+</style>
