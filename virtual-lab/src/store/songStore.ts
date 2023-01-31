@@ -63,8 +63,8 @@ export const useSongStore = defineStore('songStore', {
         throw new Error('Can not find this item!')
       }
     },
-    isRepeated(name: string) {
-      return !!this.recordMap.get(name);
-    }
+    hasDownloaded(name: string) {
+      return Lodash.cloneDeep(this.recordMap.get(name));
+    },
   }
 });

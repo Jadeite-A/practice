@@ -6,8 +6,8 @@
         <el-input v-model="downloadPath" placeholder="Please input">
           <template #prepend>
             <el-select v-model="selectBasicPath" placeholder="Select" style="width:85px">
-              <el-option label="C://" value="C://" />
-              <el-option label="D://" value="D://" actived />
+              <el-option label="C://" value="C:/" />
+              <el-option label="D://" value="D:/" />
             </el-select>
           </template>
         </el-input>
@@ -17,7 +17,7 @@
       <div class="title">Choose Moudle:</div>
       <div class="choose-box">
         <el-select v-model="selectDownloadMoudle" placeholder="Select" style="width:300px">
-          <el-option label="Skip when repeated" value="0" actived />
+          <el-option label="Skip when repeated" value="0" />
           <el-option label="Overwrite when repeated" value="1" />
         </el-select>
       </div>
@@ -48,7 +48,7 @@
       <el-scrollbar height="560px" tag="div">
         <TransitionGroup name="record" tag="div">
           <div v-for="recordItem in songStore.showRecordList" :key="recordItem.id" class="recordItem"
-            :class="[{ danger: recordItem.status }]">
+            :class="[{ danger: recordItem.status === 'failure' }]">
             <!-- <div > -->
             <span>{{ recordItem.id }}.</span>
             <span class="">{{ recordItem.name }}</span>
@@ -104,20 +104,25 @@ import axios from 'axios';
 import { ref, toRaw, reactive, computed, watch, nextTick, onMounted } from 'vue';
 import { useSongStore } from '@/store/songStore'; // @ is an alias to /src
 import { downloadMusic } from '@/views/SongDownload/SongDownload'
+import { de } from 'element-plus/es/locale';
+
+import { ElMessage } from 'element-plus'
 interface songItem {
+  id?: number,
   name: string,
   status: 'success' | 'failure',
   author: string | null,
   url: string | null,
-  time: string
+  time: string,
+  path: string | undefined
 }
 const songStore = useSongStore();
 const songName = ref('');
 const songAuthor = ref('');
 const dialogVisible = ref(false);
-const selectBasicPath = ref('D://');
+const selectBasicPath = ref('D:/');
 const downloadPath = ref('');
-const selectDownloadMoudle = ref<number>(0);
+const selectDownloadMoudle = ref<string>('0');
 
 // const inputHistoryList = computed(() => songStore.recordNum > 5 ? songStore.showRecordList.slice(0, 5) : songStore.showRecordList);
 const inputNameHistoryList = computed(() => {
@@ -149,27 +154,41 @@ const commitInput = (force = false) => {
     }
   }
   dialogVisible.value = false;
-  const isRepeated = songStore.isRepeated(songName.value);
+  const repeated = songStore.hasDownloaded(songName.value);
+  const isRepeated = repeated?.id;
+
 
   // 若重复 则跳过
-  if (isRepeated && !selectDownloadMoudle.value) {
+  console.log('Repeated', repeated);
+  console.log(selectDownloadMoudle.value);
+  console.log('isRepeated', isRepeated);
+  if (repeated?.status === 'success') {
+    ElMessage({
+      message: 'This miusic has been downloaded.'
+    })
+  }
+  if (isRepeated && selectDownloadMoudle.value === '0') {
     return;
   }
-  downloadMusic(songName.value, songAuthor.value, selectBasicPath.value + downloadPath.value).then((res: unknown) => {
-    console.log(res);
-  })
-  // const date = new Date();
-  // const time = `${date.getFullYear()}-${date.getMonth()}-${date.getDate()}  ${date.getHours()}:${date.getMinutes()}:${date.getSeconds()}`;
-  // const songInfo: songItem = {
-  //   name: songName.value,
-  //   status: 'failure',
-  //   author: songAuthor.value || null,
-  //   url: null,
-  //   time
-  // }
-  // songStore.addSong(songInfo);
-  // songName.value = '';
-  // songAuthor.value = '';
+  downloadMusic(songName.value, songAuthor.value, selectBasicPath.value + downloadPath.value).then((res: any) => {
+    const result = res.data;
+    const data = result.data;
+    const songInfo: songItem = {
+      name: data.name,
+      status: result.status.toLowerCase(),
+      author: data.author || null,
+      url: data.url || null,
+      time: result.date,
+      path: data.filePath
+    }
+
+    if (isRepeated) {
+      songInfo.id = isRepeated;
+    }
+    songStore.patchSong(songInfo);
+  });
+  songName.value = '';
+  songAuthor.value = '';
 }
 
 const test = () => {

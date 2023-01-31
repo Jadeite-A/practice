@@ -19,7 +19,7 @@ const headers = {
   'Content-Type': 'audio/mp4',
 };
 function downloadMp3(url, pathAndName, callback) {
-  console.log(url, pathAndName,'+++++++++++++++++++++++++++++++++++');
+  if (!url) return
   let req = request({
     url: encodeURI(url),
     method: "get",
@@ -113,48 +113,82 @@ function parseHtmlAndGetData(body, user) {
   return null;
 
 }
-function downloadm(name, author, filePath = 'D://') {
+const requestData = (operation) => {
   return new Promise((resolve, reject) => {
-    try {
-      filePath = `${filePath}/${name + (author ? '-' + author : '')}.mp3`;
-      const musicUrl = encodePrintableCode(name);
-      request({ url: musicUrl }, (error, response, body) => {
-        if (error) {
-          throw new Error('SEARCH FAILURE: NOT FOUND THIS MUSIC');
-        }
-        const url = parseHtmlAndGetData(body, author);
-        if (!url) {
-          throw new Error('PARSE FAILURE: NOT FOUND THIS MUSIC DATA')
-        }
-        request({ url }, (error, response, body) => {
-          if (!body) {
-            throw new Error('URL FAILURE: NOT FOUND THIS MUSIC PAGE-BODY')
-          };
-          const musicSrc = getMusicSrc(body);
-          if (!musicSrc) {
-            throw new Error('URL FAILURE: NOT FOUND THIS MUSIC URL FROM BODY');
-          }
-          downloadMp3(musicSrc, filePath, (status, err) => {
-            if (!status) {
-              throw new Error('URL ERROR: CANNOT DOWNLOAD MUSIC FROM THIS URL');
-            }
-            console.log(`download -> ${filePath} -->  success`);
-          })
-          resolve({
-            data: {
-              url, filePath
-            },
-            date: new Date().toLocaleString()
-          });
-        });
-      })
-    } catch (error) {
-      console.log(6666666666666666666666666666666666666666);
-      reject({
-        data: error,
-        date: new Date().toLocaleString()
+    request({ url: operation }, (error, response, body) => {
+      resolve({ error, response, body })
+    })
+  })
+}
+function downloadm(name, author, filePath = 'D:/') {
+  return new Promise((resolve, reject) => {
+    console.log(filePath);
+    if (filePath.length > 3) {
+      fs.mkdirSync(filePath, {
+        recursive: true,
       });
     }
+    filePath = `${filePath}/${name}.mp3`;
+    const musicUrl = encodePrintableCode(name);
+    request({ url: musicUrl }, (error, response, body) => {
+      if (error) {
+        reject('SEARCH FAILURE: NOT FOUND THIS MUSIC');
+      }
+      const url = parseHtmlAndGetData(body, author);
+      if (!url) {
+        reject('PARSE FAILURE: NOT FOUND THIS MUSIC DATA')
+      }
+      requestData(url).then(res => {
+        const { error, response, body } = res;
+        if (!body) {
+          throw new Error('URL FAILURE: NOT FOUND THIS MUSIC PAGE-BODY')
+        };
+        const musicSrc = getMusicSrc(body);
+        if (!musicSrc) {
+          reject('URL FAILURE: NOT FOUND THIS MUSIC URL FROM BODY');
+          return
+        }
+        downloadMp3(musicSrc, filePath, (status, err) => {
+          if (!status) {
+            throw new Error('URL ERROR: CANNOT DOWNLOAD MUSIC FROM THIS URL');
+          }
+          console.log(`download -> ${filePath} -->  success`);
+        })
+        resolve({
+          data: {
+            url, filePath
+          },
+          date: new Date().toLocaleString()
+        })
+      })
+      // request({ url }, (error, response, body) => {
+      //   if (!body) {
+      //     throw new Error('URL FAILURE: NOT FOUND THIS MUSIC PAGE-BODY')
+      //   };
+      //   const musicSrc = getMusicSrc(body);
+      //   if (!musicSrc) {
+      //     throw new Error('URL FAILURE: NOT FOUND THIS MUSIC URL FROM BODY');
+      //   }
+      //   downloadMp3(musicSrc, filePath, (status, err) => {
+      //     if (!status) {
+      //       throw new Error('URL ERROR: CANNOT DOWNLOAD MUSIC FROM THIS URL');
+      //     }
+      //     console.log(`download -> ${filePath} -->  success`);
+      //   })
+      //   // resolve({
+      //   //   data: {
+      //   //     url, filePath
+      //   //   },
+      //   //   date: new Date().toLocaleString()
+      //   // });
+      //   return {
+      //     data: {
+      //       url, filePath
+      //     },
+      //     date: new Date().toLocaleString()
+      //   }
+      // });
+    })
   })
 }
 

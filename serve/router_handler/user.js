@@ -28,14 +28,22 @@ const user = {
         }
         downloadm(name, author, path).then(
           res => {
-            result.data = res.data;
+            console.log(res, 'ssssssss');
+            result.data = {
+              ...res.data,
+              name, author
+            };
             result.date = res.date;
           }
         ).catch(
           (error) => {
-            console.log('????????????????????????');
+            console.log(error, '////////////');
             result.message = error;
-            result.status = 'FAILURE'
+            result.status = 'FAILURE';
+            result.date = new Date().toLocaleString();
+            result.data = {
+              name, author
+            }
           }
         ).finally(() => {
           res.send(result);
