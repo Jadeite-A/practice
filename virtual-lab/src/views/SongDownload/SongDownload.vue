@@ -1,5 +1,27 @@
 <template>
   <div class="download-container">
+    <div class="choose-path">
+      <div class="title">Input Download Path:</div>
+      <div class="choose-box">
+        <el-input v-model="downloadPath" placeholder="Please input">
+          <template #prepend>
+            <el-select v-model="selectBasicPath" placeholder="Select" style="width:85px">
+              <el-option label="C://" value="C://" />
+              <el-option label="D://" value="D://" actived />
+            </el-select>
+          </template>
+        </el-input>
+      </div>
+    </div>
+    <div class="choose-moudle">
+      <div class="title">Choose Moudle:</div>
+      <div class="choose-box">
+        <el-select v-model="selectDownloadMoudle" placeholder="Select" style="width:300px">
+          <el-option label="Skip when repeated" value="0" actived />
+          <el-option label="Overwrite when repeated" value="1" />
+        </el-select>
+      </div>
+    </div>
     <div class="inputArea">
       <el-tabs type="border-card">
         <el-tab-pane label="输入">
@@ -81,6 +103,7 @@ export default {
 import axios from 'axios';
 import { ref, toRaw, reactive, computed, watch, nextTick, onMounted } from 'vue';
 import { useSongStore } from '@/store/songStore'; // @ is an alias to /src
+import { downloadMusic } from '@/views/SongDownload/SongDownload'
 interface songItem {
   name: string,
   status: 'success' | 'failure',
@@ -92,6 +115,9 @@ const songStore = useSongStore();
 const songName = ref('');
 const songAuthor = ref('');
 const dialogVisible = ref(false);
+const selectBasicPath = ref('D://');
+const downloadPath = ref('');
+const selectDownloadMoudle = ref<number>(0);
 
 // const inputHistoryList = computed(() => songStore.recordNum > 5 ? songStore.showRecordList.slice(0, 5) : songStore.showRecordList);
 const inputNameHistoryList = computed(() => {
@@ -123,21 +149,28 @@ const commitInput = (force = false) => {
     }
   }
   dialogVisible.value = false;
+  const isRepeated = songStore.isRepeated(songName.value);
 
-  const date = new Date();
-  const time = `${date.getFullYear()}-${date.getMonth()}-${date.getDate()}  ${date.getHours()}:${date.getMinutes()}:${date.getSeconds()}`;
-  const songInfo: songItem = {
-    name: songName.value,
-    status: 'failure',
-    author: songAuthor.value || null,
-    url: null,
-    time
+  // 若重复 则跳过
+  if (isRepeated && !selectDownloadMoudle.value) {
+    return;
   }
-  songStore.addSong(songInfo);
-  songName.value = '';
-  songAuthor.value = '';
+  downloadMusic(songName.value, songAuthor.value, selectBasicPath.value + downloadPath.value).then((res: unknown) => {
+    console.log(res);
+  })
+  // const date = new Date();
+  // const time = `${date.getFullYear()}-${date.getMonth()}-${date.getDate()}  ${date.getHours()}:${date.getMinutes()}:${date.getSeconds()}`;
+  // const songInfo: songItem = {
+  //   name: songName.value,
+  //   status: 'failure',
+  //   author: songAuthor.value || null,
+  //   url: null,
+  //   time
+  // }
+  // songStore.addSong(songInfo);
+  // songName.value = '';
+  // songAuthor.value = '';
 }
-
 
 const test = () => {
   console.log(666);
@@ -150,6 +183,23 @@ const test = () => {
 <style scoped lang="scss">
 .download-container {
   padding: 0 20px;
+
+  .choose-path,
+  .choose-moudle {
+    display: flex;
+    padding: 0 0 10px;
+    align-items: center;
+
+    .title {
+      margin-right: 10px;
+      font-weight: 700;
+    }
+
+    .choose-box {
+      text-align: left;
+      min-width: 400px;
+    }
+  }
 
   .inputArea {
     .inputGround {

@@ -17,13 +17,29 @@ const user = {
   download: (req, res) => {
     let postData = '';
     req.on('data', (postDataChunk) => postData += postDataChunk)
-      .on('end', async() => {
-        const { name, author } = JSON.parse(postData);
-        await downloadm(name, author,'D://');
-        res.send({
+      .on('end', () => {
+        const { name, author, path } = JSON.parse(postData);
+        // let result = 'SUCCESS';
+        // let data = '';
+        let result = {
           code: 200,
-          data: ''
-        })
+          data: '',
+          status: 'SUCCESS',
+        }
+        downloadm(name, author, path).then(
+          res => {
+            result.data = res.data;
+            result.date = res.date;
+          }
+        ).catch(
+          (error) => {
+            console.log('????????????????????????');
+            result.message = error;
+            result.status = 'FAILURE'
+          }
+        ).finally(() => {
+          res.send(result);
+        });
       })
   }
 }

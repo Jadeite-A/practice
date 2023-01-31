@@ -7,7 +7,7 @@ interface SongItem {
   status: 'success' | 'failure',
   author: string | null,
   url: string | null,
-  time: string 
+  time: string
 }
 interface SongStore {
   idFlag: number
@@ -62,6 +62,9 @@ export const useSongStore = defineStore('songStore', {
       } else {
         throw new Error('Can not find this item!')
       }
+    },
+    isRepeated(name: string) {
+      return !!this.recordMap.get(name);
     }
   }
 });

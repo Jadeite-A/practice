@@ -19,7 +19,7 @@ const headers = {
   'Content-Type': 'audio/mp4',
 };
 function downloadMp3(url, pathAndName, callback) {
-  console.log(url, pathAndName);
+  console.log(url, pathAndName,'+++++++++++++++++++++++++++++++++++');
   let req = request({
     url: encodeURI(url),
     method: "get",
@@ -37,7 +37,7 @@ function downloadMp3(url, pathAndName, callback) {
     // };
     // fs.appendFileSync(errorFilePath, JSON.stringify(musicInfo) + "\n");
 
-    // callback && callback(null, pathAndName);
+    callback && callback(false, error);
 
   });
 
@@ -49,10 +49,10 @@ function downloadMp3(url, pathAndName, callback) {
       })
     )
     .on("close", () => {
-      callback && callback(null, pathAndName);
+      callback && callback(true);
     })
     .on("complete", (resp, body) => {
-      callback && callback(null, pathAndName);
+      callback && callback(true);
     });
 }
 function getNameAndAuthor(line) {
@@ -69,7 +69,7 @@ function getMusicSrc(body) {
   let script = scripts[scripts.length - 1];
   let src = script?.children?.[0].data?.toString()?.match(/(?<=url\:\s\')(.*)(?=\')/)?.[0] ?? "";
   let musicSrc = src.startsWith("get") ? `https://www.hifini.com/${src}` : src;
-  // console.log(333, musicSrc);
+  console.log(333, musicSrc);
   return musicSrc;
 }
 function encodePrintableCode(str) {
@@ -113,29 +113,48 @@ function parseHtmlAndGetData(body, user) {
   return null;
 
 }
-function downloadm(name, author, filePath = 'music') {
-  filePath = `${filePath}/${name}-${author}.mp3`;
-  const musicUrl = encodePrintableCode(name);
-  request({ url: musicUrl }, (error, response, body) => {
-    if (error) { 
-      console.log(1);
-    }
-    const url = parseHtmlAndGetData(body, author);
-    if (!url) {
-      console.log(2);
-      return;
-    }
-    request({ url }, (error, response, body) => {
-      if (!body) { };
-      const musicSrc = getMusicSrc(body);
-      if (!musicSrc) {
-        return;
-      }
-      downloadMp3(musicSrc, filePath, async () => {
-        console.log(6669);
+function downloadm(name, author, filePath = 'D://') {
+  return new Promise((resolve, reject) => {
+    try {
+      filePath = `${filePath}/${name + (author ? '-' + author : '')}.mp3`;
+      const musicUrl = encodePrintableCode(name);
+      request({ url: musicUrl }, (error, response, body) => {
+        if (error) {
+          throw new Error('SEARCH FAILURE: NOT FOUND THIS MUSIC');
+        }
+        const url = parseHtmlAndGetData(body, author);
+        if (!url) {
+          throw new Error('PARSE FAILURE: NOT FOUND THIS MUSIC DATA')
+        }
+        request({ url }, (error, response, body) => {
+          if (!body) {
+            throw new Error('URL FAILURE: NOT FOUND THIS MUSIC PAGE-BODY')
+          };
+          const musicSrc = getMusicSrc(body);
+          if (!musicSrc) {
+            throw new Error('URL FAILURE: NOT FOUND THIS MUSIC URL FROM BODY');
+          }
+          downloadMp3(musicSrc, filePath, (status, err) => {
+            if (!status) {
+              throw new Error('URL ERROR: CANNOT DOWNLOAD MUSIC FROM THIS URL');
+            }
+            console.log(`download -> ${filePath} -->  success`);
+          })
+          resolve({
+            data: {
+              url, filePath
+            },
+            date: new Date().toLocaleString()
+          });
+        });
       })
-      console.log(3);
-    });
+    } catch (error) {
+      console.log(6666666666666666666666666666666666666666);
+      reject({
+        data: error,
+        date: new Date().toLocaleString()
+      });
+    }
   })
 }
 
